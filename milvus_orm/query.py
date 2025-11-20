@@ -188,11 +188,11 @@ class QuerySet(Generic[M]):
         results = await client.query(
             collection_name=self.model_class.Meta.collection_name,
             filter=self._filter or "",
-            limit=0,
-            output_fields=[self.model_class._primary_key_field],
+            # limit=0,
+            output_fields=["count(*)"],
         )
 
-        return len(results)
+        return results[0]["count(*)"]
 
     async def delete(self) -> int:
         """Delete all instances matching the query."""
