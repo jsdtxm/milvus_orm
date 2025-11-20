@@ -2,7 +2,9 @@
 Query module for milvus_orm. Defines the QuerySet class for async query operations.
 """
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Dict, Generic, List, Optional, Type, TypeVar
+
+from milvus_orm.exceptions import DoesNotExist, MultipleObjectsReturned
 
 from .client import ensure_connection
 
@@ -12,7 +14,7 @@ if TYPE_CHECKING:
 M = TypeVar("M", bound="Model")
 
 
-class QuerySet:
+class QuerySet(Generic[M]):
     """Async query set for Milvus models."""
 
     def __init__(self, model_class: Type[M]):
@@ -92,11 +94,11 @@ class QuerySet:
         results = await qs.all()
 
         if len(results) == 0:
-            raise self.model_class.DoesNotExist(
+            raise DoesNotExist(
                 f"{self.model_class.__name__} matching query does not exist."
             )
         if len(results) > 1:
-            raise self.model_class.MultipleObjectsReturned(
+            raise MultipleObjectsReturned(
                 f"get() returned more than one {self.model_class.__name__} -- it returned {len(results)!r}!"
             )
 
@@ -219,21 +221,3 @@ class QuerySet:
         # Milvus doesn't support ordering directly, so we get all and take last
         results = await self.all()
         return results[-1] if results else None
-
-
-# Add exception classes to Model class
-def _add_exceptions_to_model():
-    from .models import Model
-
-    class DoesNotExist(Exception):
-        pass
-
-    class MultipleObjectsReturned(Exception):
-        pass
-
-    Model.DoesNotExist = DoesNotExist
-    Model.MultipleObjectsReturned = MultipleObjectsReturned
-
-
-# Initialize exceptions
-_add_exceptions_to_model()

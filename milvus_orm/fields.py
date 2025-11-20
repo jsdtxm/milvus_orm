@@ -3,7 +3,7 @@ Fields module for milvus_orm. Defines the Field classes used in Model definition
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 
 class Field(ABC):

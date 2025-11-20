@@ -4,40 +4,23 @@ milvus_orm - A Django-style ORM for Milvus vector database with async support.
 
 __version__ = "0.1.0"
 
-# 导入字段类型
-try:
-    from milvus_orm.fields import (
-        FLOAT,
-        FLOAT_VECTOR,
-        INT64,
-        JSON,
-        SPARSE_FLOAT_VECTOR,
-        VARCHAR,
-        Field,
-    )
-except ImportError:
-    # 尝试相对导入
-    from .fields import (
-        FLOAT,
-        FLOAT_VECTOR,
-        INT64,
-        JSON,
-        SPARSE_FLOAT_VECTOR,
-        VARCHAR,
-        Field,
-    )
-
-# 导入模型类
-try:
-    from milvus_orm.models import Model
-except ImportError:
-    from .models import Model
 
 # 导入客户端函数
-try:
-    from milvus_orm.client import connect, disconnect, get_client
-except ImportError:
-    from .client import connect, disconnect, get_client
+from .client import connect, disconnect, get_client
+
+# 导入字段类型
+from .fields import (
+    FLOAT,
+    FLOAT_VECTOR,
+    INT64,
+    JSON,
+    SPARSE_FLOAT_VECTOR,
+    VARCHAR,
+    Field,
+)
+
+# 导入模型类
+from .models import Model
 
 __all__ = [
     "Field",

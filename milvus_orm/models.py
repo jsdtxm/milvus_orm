@@ -2,14 +2,11 @@
 Models module for milvus_orm. Defines the Model base class and related functionality.
 """
 
-import inspect
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, TypeVar
+from typing import Any, Dict, List, Type, TypeVar
 
 from .client import ensure_connection
 from .fields import Field
-
-if TYPE_CHECKING:
-    from .query import QuerySet
+from .query import QuerySet
 
 M = TypeVar("M", bound="Model")
 
@@ -177,7 +174,6 @@ class Model(object, metaclass=ModelMeta):
     @classmethod
     def objects(cls: Type[M]) -> "QuerySet[M]":
         """Return a QuerySet for the model."""
-        from .query import QuerySet
 
         return QuerySet(cls)
 
