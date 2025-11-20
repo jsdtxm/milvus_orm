@@ -5,6 +5,7 @@ Models module for milvus_orm. Defines the Model base class and related functiona
 from typing import TYPE_CHECKING, Any, Dict, List, Self, Type, TypeVar
 
 from pymilvus import CollectionSchema, FieldSchema
+from pymilvus.grpc_gen import common_pb2
 from pymilvus.milvus_client.index import IndexParams
 
 from .client import ensure_connection
@@ -12,6 +13,9 @@ from .exceptions import NotContainsVectorField
 from .fields import BigIntField, Field, VectorField
 from .query import QuerySet
 from .utils import classproperty
+
+ConsistencyLevel = common_pb2.ConsistencyLevel
+
 
 M = TypeVar("M", bound="Model")
 
@@ -82,9 +86,15 @@ class MetaInfo:
     Metadata class for Model.
     """
 
-    def __init__(self, collection_name: str, enable_dynamic_field: bool = False):
+    def __init__(
+        self,
+        collection_name: str,
+        enable_dynamic_field: bool = False,
+        consistency_level: str = ConsistencyLevel.Session,
+    ):
         self.collection_name = collection_name
         self.enable_dynamic_field = enable_dynamic_field
+        self.consistency_level = consistency_level
 
 
 class Model(object, metaclass=ModelMeta):
@@ -174,6 +184,7 @@ class Model(object, metaclass=ModelMeta):
             collection_name=cls.Meta.collection_name,
             schema=schema,
             index_params=index_params,
+            consistency_level=cls.Meta.consistency_level,
         )
         return True
 
@@ -306,4 +317,6 @@ class Model(object, metaclass=ModelMeta):
         return await client.upsert(
             collection_name=self.Meta.collection_name,
             data=[self.to_dict()],
+            consistency_level=self.Meta.consistency_level,
+            partial_update=True,
         )

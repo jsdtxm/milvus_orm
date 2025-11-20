@@ -26,6 +26,8 @@ class QuerySet(Generic[M]):
         self._search_params: Optional[Dict[str, Any]] = None
         self._vector_field: Optional[str] = None
 
+        self._consistency_level: Optional[str] = None
+
     def filter(self, expr: str) -> "QuerySet[M]":
         """Add filter expression to the query."""
         qs = self._clone()
@@ -131,6 +133,8 @@ class QuerySet(Generic[M]):
                 limit=self._limit,
                 output_fields=self._output_fields
                 or list(self.model_class._fields.keys()),
+                consistency_level=self._consistency_level
+                or self.model_class.Meta.consistency_level,
                 **{
                     k: v
                     for k, v in self._search_params.items()
@@ -143,7 +147,7 @@ class QuerySet(Generic[M]):
             for result in results[0]:  # results is a list of result lists
                 entity = result.entity
                 data = entity.to_dict()
-                instances.append(self.model_class(**data['entity']))
+                instances.append(self.model_class(**data["entity"]))
 
             # Apply offset
             if self._offset > 0:
@@ -159,6 +163,8 @@ class QuerySet(Generic[M]):
                 offset=self._offset,
                 output_fields=self._output_fields
                 or list(self.model_class._fields.keys()),
+                consistency_level=self._consistency_level
+                or self.model_class.Meta.consistency_level,
             )
 
             # Convert query results to model instances
@@ -186,6 +192,8 @@ class QuerySet(Generic[M]):
         results = await client.query(
             collection_name=self.model_class.Meta.collection_name,
             filter=self._filter or "",
+            consistency_level=self._consistency_level
+            or self.model_class.Meta.consistency_level,
             # limit=0,
             output_fields=["count(*)"],
         )
