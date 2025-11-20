@@ -2,16 +2,19 @@
 Query module for milvus_orm. Defines the QuerySet class for async query operations.
 """
 
-from typing import Dict, List, Any, Optional, Type, TypeVar, Union
-from .client import ensure_connection
-from .models import Model
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, TypeVar, Union
 
-M = TypeVar('M', bound='Model')
+from .client import ensure_connection
+
+if TYPE_CHECKING:
+    from .models import Model
+
+M = TypeVar("M", bound="Model")
 
 
 class QuerySet:
     """Async query set for Milvus models."""
-    
+
     def __init__(self, model_class: Type[M]):
         self.model_class = model_class
         self._filter: Optional[str] = None
@@ -20,32 +23,32 @@ class QuerySet:
         self._output_fields: Optional[List[str]] = None
         self._search_params: Optional[Dict[str, Any]] = None
         self._vector_field: Optional[str] = None
-    
-    def filter(self, expr: str) -> 'QuerySet[M]':
+
+    def filter(self, expr: str) -> "QuerySet[M]":
         """Add filter expression to the query."""
         qs = self._clone()
         qs._filter = expr
         return qs
-    
-    def limit(self, limit: int) -> 'QuerySet[M]':
+
+    def limit(self, limit: int) -> "QuerySet[M]":
         """Set maximum number of results to return."""
         qs = self._clone()
         qs._limit = limit
         return qs
-    
-    def offset(self, offset: int) -> 'QuerySet[M]':
+
+    def offset(self, offset: int) -> "QuerySet[M]":
         """Set offset for pagination."""
         qs = self._clone()
         qs._offset = offset
         return qs
-    
-    def only(self, *fields: str) -> 'QuerySet[M]':
+
+    def only(self, *fields: str) -> "QuerySet[M]":
         """Specify fields to return."""
         qs = self._clone()
         qs._output_fields = list(fields)
         return qs
-    
-    def search(self, vector: List[float], field_name: str, **kwargs) -> 'QuerySet[M]':
+
+    def search(self, vector: List[float], field_name: str, **kwargs) -> "QuerySet[M]":
         """Configure vector search parameters."""
         qs = self._clone()
         qs._vector_field = field_name
@@ -55,11 +58,11 @@ class QuerySet:
             "limit": qs._limit,
             "offset": qs._offset,
             "filter": qs._filter,
-            **kwargs
+            **kwargs,
         }
         return qs
-    
-    def _clone(self) -> 'QuerySet[M]':
+
+    def _clone(self) -> "QuerySet[M]":
         """Clone the query set."""
         qs = QuerySet(self.model_class)
         qs._filter = self._filter
@@ -69,7 +72,7 @@ class QuerySet:
         qs._search_params = self._search_params.copy() if self._search_params else None
         qs._vector_field = self._vector_field
         return qs
-    
+
     async def get(self, **kwargs) -> M:
         """Get a single instance matching the filter."""
         # Build filter expression from kwargs
@@ -81,13 +84,13 @@ class QuerySet:
                 else:
                     expr_parts.append(f"{key} == {value}")
             expr = " && ".join(expr_parts)
-            
+
             qs = self.filter(expr).limit(2)
         else:
             qs = self.limit(2)
-        
+
         results = await qs.all()
-        
+
         if len(results) == 0:
             raise self.model_class.DoesNotExist(
                 f"{self.model_class.__name__} matching query does not exist."
@@ -96,21 +99,27 @@ class QuerySet:
             raise self.model_class.MultipleObjectsReturned(
                 f"get() returned more than one {self.model_class.__name__} -- it returned {len(results)!r}!"
             )
-        
+
         return results[0]
-    
+
     async def all(self) -> List[M]:
         """Return all instances matching the query."""
         client = await ensure_connection()
-        
+
         # Check if collection exists
-        if not await client.has_collection(collection_name=self.model_class.collection_name):
+        if not await client.has_collection(
+            collection_name=self.model_class.collection_name
+        ):
             return []
-        
+
         # Load collection if not loaded
-        if not await client.has_collection(collection_name=self.model_class.collection_name, check_loaded=True):
-            await client.load_collection(collection_name=self.model_class.collection_name)
-        
+        if not await client.has_collection(
+            collection_name=self.model_class.collection_name, check_loaded=True
+        ):
+            await client.load_collection(
+                collection_name=self.model_class.collection_name
+            )
+
         # Determine which method to use: search or query
         if self._search_params and self._vector_field:
             # Use vector search
@@ -120,22 +129,26 @@ class QuerySet:
                 anns_field=self._search_params["field_name"],
                 limit=self._limit,
                 expr=self._filter,
-                output_fields=self._output_fields or list(self.model_class._fields.keys()),
-                **{k: v for k, v in self._search_params.items() 
-                   if k not in ["vector", "field_name", "limit", "offset", "filter"]}
+                output_fields=self._output_fields
+                or list(self.model_class._fields.keys()),
+                **{
+                    k: v
+                    for k, v in self._search_params.items()
+                    if k not in ["vector", "field_name", "limit", "offset", "filter"]
+                },
             )
-            
+
             # Convert search results to model instances
             instances = []
             for result in results[0]:  # results is a list of result lists
                 entity = result.entity
                 data = entity.to_dict()
                 instances.append(self.model_class(**data))
-            
+
             # Apply offset
             if self._offset > 0:
-                instances = instances[self._offset:]
-                
+                instances = instances[self._offset :]
+
             return instances
         else:
             # Use scalar query
@@ -144,55 +157,63 @@ class QuerySet:
                 filter=self._filter or "",
                 limit=self._limit,
                 offset=self._offset,
-                output_fields=self._output_fields or list(self.model_class._fields.keys())
+                output_fields=self._output_fields
+                or list(self.model_class._fields.keys()),
             )
-            
+
             # Convert query results to model instances
             return [self.model_class(**item) for item in results]
-    
+
     async def count(self) -> int:
         """Count instances matching the query."""
         client = await ensure_connection()
-        
+
         # Check if collection exists
-        if not await client.has_collection(collection_name=self.model_class.collection_name):
+        if not await client.has_collection(
+            collection_name=self.model_class.collection_name
+        ):
             return 0
-        
+
         # Load collection if not loaded
-        if not await client.has_collection(collection_name=self.model_class.collection_name, check_loaded=True):
-            await client.load_collection(collection_name=self.model_class.collection_name)
-        
+        if not await client.has_collection(
+            collection_name=self.model_class.collection_name, check_loaded=True
+        ):
+            await client.load_collection(
+                collection_name=self.model_class.collection_name
+            )
+
         # Use query with limit=0 to get count
         results = await client.query(
             collection_name=self.model_class.collection_name,
             filter=self._filter or "",
             limit=0,
-            output_fields=[self.model_class._primary_key_field]
+            output_fields=[self.model_class._primary_key_field],
         )
-        
+
         return len(results)
-    
+
     async def delete(self) -> int:
         """Delete all instances matching the query."""
         client = await ensure_connection()
-        
+
         # Check if collection exists
-        if not await client.has_collection(collection_name=self.model_class.collection_name):
+        if not await client.has_collection(
+            collection_name=self.model_class.collection_name
+        ):
             return 0
-        
+
         # Delete using filter
         result = await client.delete(
-            collection_name=self.model_class.collection_name,
-            filter=self._filter or ""
+            collection_name=self.model_class.collection_name, filter=self._filter or ""
         )
-        
-        return result.get('delete_count', 0)
-    
+
+        return result.get("delete_count", 0)
+
     async def first(self) -> Optional[M]:
         """Return the first instance matching the query."""
         results = await self.limit(1).all()
         return results[0] if results else None
-    
+
     async def last(self) -> Optional[M]:
         """Return the last instance matching the query."""
         # Milvus doesn't support ordering directly, so we get all and take last
@@ -203,13 +224,13 @@ class QuerySet:
 # Add exception classes to Model class
 def _add_exceptions_to_model():
     from .models import Model
-    
+
     class DoesNotExist(Exception):
         pass
-    
+
     class MultipleObjectsReturned(Exception):
         pass
-    
+
     Model.DoesNotExist = DoesNotExist
     Model.MultipleObjectsReturned = MultipleObjectsReturned
 

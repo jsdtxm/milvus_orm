@@ -7,24 +7,24 @@ __version__ = "0.1.0"
 # 导入字段类型
 try:
     from milvus_orm.fields import (
-        Field,
-        INT64,
-        VARCHAR,
-        JSON,
         FLOAT,
         FLOAT_VECTOR,
+        INT64,
+        JSON,
         SPARSE_FLOAT_VECTOR,
+        VARCHAR,
+        Field,
     )
 except ImportError:
     # 尝试相对导入
     from .fields import (
-        Field,
-        INT64,
-        VARCHAR,
-        JSON,
         FLOAT,
         FLOAT_VECTOR,
+        INT64,
+        JSON,
         SPARSE_FLOAT_VECTOR,
+        VARCHAR,
+        Field,
     )
 
 # 导入模型类
