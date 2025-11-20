@@ -2,7 +2,7 @@
 Models module for milvus_orm. Defines the Model base class and related functionality.
 """
 
-from typing import Any, Dict, List, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Dict, List, Type, TypeVar
 
 from pymilvus import CollectionSchema, FieldSchema
 from pymilvus.milvus_client.index import IndexParams
@@ -11,6 +11,7 @@ from .client import ensure_connection
 from .exceptions import NotContainsVectorField
 from .fields import BigIntField, Field, VectorField
 from .query import QuerySet
+from .utils import classproperty
 
 M = TypeVar("M", bound="Model")
 
@@ -210,6 +211,7 @@ class Model(object, metaclass=ModelMeta):
         data = [instance.to_dict() for instance in instances]
 
         # Insert data in bulk
+        print(data)
         result = await client.insert(
             collection_name=cls.Meta.collection_name, data=data
         )
@@ -228,11 +230,17 @@ class Model(object, metaclass=ModelMeta):
 
         return result.get("insert_count", 0)
 
-    @classmethod
+    @classproperty
     def objects(cls: Type[M]) -> "QuerySet[M]":
         """Return a QuerySet for the model."""
 
         return QuerySet(cls)
+
+    if TYPE_CHECKING:
+
+        @classmethod
+        @property
+        def objects(cls) -> "QuerySet[M]": ...
 
     async def save(self) -> bool:
         """Save model instance to Milvus."""
