@@ -57,8 +57,6 @@ class QuerySet(Generic[M]):
         qs._search_params = {
             "vector": vector,
             "field_name": field_name,
-            "limit": qs._limit,
-            "offset": qs._offset,
             "filter": qs._filter,
             **kwargs,
         }
@@ -128,9 +126,9 @@ class QuerySet(Generic[M]):
             results = await client.search(
                 collection_name=self.model_class.Meta.collection_name,
                 data=[self._search_params["vector"]],
+                filter=self._filter,
                 anns_field=self._search_params["field_name"],
                 limit=self._limit,
-                expr=self._filter,
                 output_fields=self._output_fields
                 or list(self.model_class._fields.keys()),
                 **{
@@ -145,7 +143,7 @@ class QuerySet(Generic[M]):
             for result in results[0]:  # results is a list of result lists
                 entity = result.entity
                 data = entity.to_dict()
-                instances.append(self.model_class(**data))
+                instances.append(self.model_class(**data['entity']))
 
             # Apply offset
             if self._offset > 0:
