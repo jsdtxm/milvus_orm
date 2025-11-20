@@ -28,6 +28,14 @@ class Field(ABC):
         self.description = description
         self.kwargs = kwargs
 
+        if self.primary_key and self.MILVUS_TYPE not in [
+            DataType.INT64,
+            DataType.VARCHAR,
+        ]:
+            raise ValueError(
+                f"Primary key is not supported for field type {self.MILVUS_TYPE.name}"
+            )
+
     @abstractmethod
     def to_milvus_type(self) -> dict:
         """Convert field definition to Milvus SDK format."""
@@ -64,6 +72,11 @@ class BigIntField(IntegerField):
     """Int64 field type."""
 
     MILVUS_TYPE = DataType.INT64
+
+    def validate(self, value: Any) -> bool:
+        if value is None:
+            return self.nullable or self.primary_key
+        return isinstance(value, int)
 
 
 class BooleanField(Field):
