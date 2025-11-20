@@ -137,6 +137,34 @@ class CharField(Field):
         return len(value) <= self.max_length
 
 
+class UUIDField(CharField):
+    """UUID field type."""
+
+    def __init__(
+        self,
+        primary_key: bool = False,
+        nullable: bool = False,
+        default: Any = None,
+        description: str = "",
+        **kwargs,
+    ):
+        super().__init__(
+            max_length=36,
+            primary_key=primary_key,
+            nullable=nullable,
+            default=default,
+            description=description,
+            **kwargs,
+        )
+
+    def validate(self, value: Any) -> bool:
+        if value is None:
+            return self.nullable or self.primary_key
+        if not isinstance(value, str):
+            return False
+        return len(value) <= self.max_length
+
+
 class JsonField(Field):
     """JSON field type for storing structured data."""
 

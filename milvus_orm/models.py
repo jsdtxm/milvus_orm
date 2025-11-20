@@ -2,6 +2,7 @@
 Models module for milvus_orm. Defines the Model base class and related functionality.
 """
 
+import uuid
 from typing import TYPE_CHECKING, Any, Dict, List, Self, Type, TypeVar
 
 from pymilvus import CollectionSchema, FieldSchema
@@ -10,7 +11,7 @@ from pymilvus.milvus_client.index import IndexParams
 
 from .client import ensure_connection
 from .exceptions import NotContainsVectorField
-from .fields import BigIntField, Field, VectorField
+from .fields import BigIntField, Field, UUIDField, VectorField
 from .query import QuerySet
 from .utils import classproperty
 
@@ -63,7 +64,7 @@ class ModelMeta(type):
 
         # If no primary key is defined, add a default one
         if not primary_key_field:
-            id_field = BigIntField(primary_key=True, auto_id=True)
+            id_field = UUIDField(primary_key=True)
             id_field.name = "id"
             fields["id"] = id_field
             attrs["id"] = id_field
@@ -126,10 +127,14 @@ class Model(object, metaclass=ModelMeta):
     def to_dict(self) -> Dict[str, Any]:
         """Convert model instance to dictionary."""
         data = {}
-        for field_name in self._fields:
+        for field_name, field in self._fields.items():
             value = getattr(self, field_name, None)
             if value is not None:
+                if isinstance(field, UUIDField):
+                    data[field_name] = str(value)
                 data[field_name] = value
+            elif isinstance(field, UUIDField):
+                data[field_name] = str(uuid.uuid4())
 
         # Add extra fields for dynamic schema
         if hasattr(self, "_extra_fields") and self._extra_fields:
@@ -224,7 +229,6 @@ class Model(object, metaclass=ModelMeta):
         data = [instance.to_dict() for instance in instances]
 
         # Insert data in bulk
-        print(data)
         result = await client.insert(
             collection_name=cls.Meta.collection_name, data=data
         )
