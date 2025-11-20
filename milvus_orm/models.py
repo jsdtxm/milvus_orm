@@ -43,6 +43,19 @@ class ModelMeta(type):
                 "Model must contain at least one vector field."
             )
 
+        meta = attrs.get("Meta")
+        meta_info_params = {"collection_name": name.lower()} | (
+            {
+                k: v
+                for k, v in vars(meta).items()
+                if not k.startswith("__") and not callable(v)
+            }
+            if meta
+            else {}
+        )
+
+        attrs["Meta"] = MetaInfo(**meta_info_params)
+
         # If no primary key is defined, add a default one
         if not primary_key_field:
             id_field = BigIntField(primary_key=True, auto_id=True)
@@ -68,7 +81,9 @@ class MetaInfo:
     Metadata class for Model.
     """
 
-    collection_name: str
+    def __init__(self, collection_name: str, enable_dynamic_field: bool = False):
+        self.collection_name = collection_name
+        self.enable_dynamic_field = enable_dynamic_field
 
 
 class Model(object, metaclass=ModelMeta):
@@ -121,7 +136,7 @@ class Model(object, metaclass=ModelMeta):
         schema = CollectionSchema(
             fields=fields,
             auto_id=False,
-            enable_dynamic_field=True,
+            enable_dynamic_field=cls.Meta.enable_dynamic_field,
         )
 
         return schema
