@@ -10,13 +10,15 @@ from .client import connect, disconnect, get_client
 
 # 导入字段类型
 from .fields import (
-    FLOAT,
-    FLOAT_VECTOR,
-    INT64,
-    JSON,
-    SPARSE_FLOAT_VECTOR,
-    VARCHAR,
+    BigIntField,
+    BooleanField,
+    CharField,
     Field,
+    FloatField,
+    FloatVectorField,
+    IntegerField,
+    JsonField,
+    SparseFloatVectorField,
 )
 
 # 导入模型类
@@ -24,12 +26,14 @@ from .models import Model
 
 __all__ = [
     "Field",
-    "INT64",
-    "VARCHAR",
-    "JSON",
-    "FLOAT",
-    "FLOAT_VECTOR",
-    "SPARSE_FLOAT_VECTOR",
+    "BigIntField",
+    "BooleanField",
+    "CharField",
+    "FloatField",
+    "FloatVectorField",
+    "IntegerField",
+    "JsonField",
+    "SparseFloatVectorField",
     "Model",
     "connect",
     "disconnect",

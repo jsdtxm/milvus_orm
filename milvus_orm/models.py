@@ -5,7 +5,7 @@ Models module for milvus_orm. Defines the Model base class and related functiona
 from typing import Any, Dict, List, Type, TypeVar
 
 from .client import ensure_connection
-from .fields import Field
+from .fields import BigIntField, Field
 from .query import QuerySet
 
 M = TypeVar("M", bound="Model")
@@ -32,9 +32,7 @@ class ModelMeta(type):
 
         # If no primary key is defined, add a default one
         if not primary_key_field:
-            from .fields import INT64
-
-            id_field = INT64(primary_key=True, auto_id=True)
+            id_field = BigIntField(primary_key=True, auto_id=True)
             id_field.name = "id"
             fields["id"] = id_field
             attrs["id"] = id_field

@@ -9,6 +9,8 @@ from typing import Any
 class Field(ABC):
     """Base class for all field types in milvus_orm."""
 
+    MILVUS_TYPE: str
+
     def __init__(
         self,
         primary_key: bool = False,
@@ -35,13 +37,15 @@ class Field(ABC):
         pass
 
 
-class INT64(Field):
+class IntegerField(Field):
     """Int64 field type."""
+
+    MILVUS_TYPE = "Int32"
 
     def to_milvus_type(self) -> dict:
         return {
             "name": self.name,
-            "data_type": "Int64",
+            "data_type": self.MILVUS_TYPE,
             "is_primary_key": self.primary_key,
             "nullable": self.nullable,
             "description": self.description,
@@ -54,8 +58,36 @@ class INT64(Field):
         return isinstance(value, int)
 
 
-class VARCHAR(Field):
+class BigIntField(IntegerField):
+    """Int64 field type."""
+
+    MILVUS_TYPE = "Int64"
+
+
+class BooleanField(Field):
+    """Boolean field type."""
+
+    MILVUS_TYPE = "Bool"
+
+    def to_milvus_type(self) -> dict:
+        return {
+            "name": self.name,
+            "data_type": self.MILVUS_TYPE,
+            "nullable": self.nullable,
+            "description": self.description,
+            **self.kwargs,
+        }
+
+    def validate(self, value: Any) -> bool:
+        if value is None:
+            return self.nullable
+        return isinstance(value, bool)
+
+
+class CharField(Field):
     """Variable character string field type."""
+
+    MILVUS_TYPE = "VarChar"
 
     def __init__(
         self,
@@ -72,7 +104,7 @@ class VARCHAR(Field):
     def to_milvus_type(self) -> dict:
         return {
             "name": self.name,
-            "data_type": "VarChar",
+            "data_type": self.MILVUS_TYPE,
             "max_length": self.max_length,
             "enable_analyzer": self.enable_analyzer,
             "enable_match": self.enable_match,
@@ -90,13 +122,15 @@ class VARCHAR(Field):
         return len(value) <= self.max_length
 
 
-class JSON(Field):
+class JsonField(Field):
     """JSON field type for storing structured data."""
+
+    MILVUS_TYPE = "JSON"
 
     def to_milvus_type(self) -> dict:
         return {
             "name": self.name,
-            "data_type": "JSON",
+            "data_type": self.MILVUS_TYPE,
             "nullable": self.nullable,
             "description": self.description,
             **self.kwargs,
@@ -109,13 +143,15 @@ class JSON(Field):
         return isinstance(value, (dict, list, str, int, float, bool))
 
 
-class FLOAT(Field):
+class FloatField(Field):
     """Float field type."""
+
+    MILVUS_TYPE = "Float"
 
     def to_milvus_type(self) -> dict:
         return {
             "name": self.name,
-            "data_type": "Float",
+            "data_type": self.MILVUS_TYPE,
             "nullable": self.nullable,
             "description": self.description,
             **self.kwargs,
@@ -127,8 +163,10 @@ class FLOAT(Field):
         return isinstance(value, (int, float))
 
 
-class FLOAT_VECTOR(Field):
+class FloatVectorField(Field):
     """Dense float vector field type."""
+
+    MILVUS_TYPE = "FloatVector"
 
     def __init__(self, dim: int, **kwargs):
         super().__init__(**kwargs)
@@ -137,7 +175,7 @@ class FLOAT_VECTOR(Field):
     def to_milvus_type(self) -> dict:
         return {
             "name": self.name,
-            "data_type": "FloatVector",
+            "data_type": self.MILVUS_TYPE,
             "dim": self.dim,
             "description": self.description,
             **self.kwargs,
@@ -153,13 +191,15 @@ class FLOAT_VECTOR(Field):
         return all(isinstance(v, (int, float)) for v in value)
 
 
-class SPARSE_FLOAT_VECTOR(Field):
+class SparseFloatVectorField(Field):
     """Sparse float vector field type."""
+
+    MILVUS_TYPE = "SparseFloatVector"
 
     def to_milvus_type(self) -> dict:
         return {
             "name": self.name,
-            "data_type": "SparseFloatVector",
+            "data_type": self.MILVUS_TYPE,
             "description": self.description,
             **self.kwargs,
         }
