@@ -301,13 +301,7 @@ class Model(object, metaclass=ModelMeta):
                     self._extra_fields = {}
                 self._extra_fields[field_name] = value
 
-        # Delete old instance and insert updated one
-        # This is a workaround since Milvus doesn't support direct updates
-        delete_result = await self.delete()
-        if delete_result:
-            # Reset primary key to None to let Milvus assign a new one
-            # (since we're inserting a new record)
-            setattr(self, primary_key, None)
-            return await self.save()
-
-        return False
+        return await client.upsert(
+            collection_name=self.Meta.collection_name,
+            data=[self.to_dict()],
+        )
