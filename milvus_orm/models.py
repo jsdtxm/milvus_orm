@@ -250,16 +250,15 @@ class Model(object, metaclass=ModelMeta):
             await self.create_collection()
 
         # Convert to dict and insert
-        data = self.to_dict()
         result = await client.insert(
-            collection_name=self.Meta.collection_name, data=[data]
+            collection_name=self.Meta.collection_name, data=[self.to_dict()]
         )
 
         # Update primary key if auto_id is enabled
         primary_key = self._primary_key_field
         if not hasattr(self, primary_key) or getattr(self, primary_key) is None:
             if result.get("insert_count", 0) > 0:
-                setattr(self, primary_key, result.get("primary_keys", [None])[0])
+                setattr(self, primary_key, result.get(f"{primary_key}s", [None])[0])
 
         return result.get("insert_count", 0) > 0
 
