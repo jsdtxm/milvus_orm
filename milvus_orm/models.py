@@ -2,7 +2,7 @@
 Models module for milvus_orm. Defines the Model base class and related functionality.
 """
 
-from typing import TYPE_CHECKING, Any, Dict, List, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Dict, List, Self, Type, TypeVar
 
 from pymilvus import CollectionSchema, FieldSchema
 from pymilvus.milvus_client.index import IndexParams
@@ -96,6 +96,8 @@ class Model(object, metaclass=ModelMeta):
     # Will be set by metaclass
     _fields: Dict[str, Field] = {}
     _primary_key_field: str = "id"
+
+    id: BigIntField
 
     Meta: MetaInfo
 
@@ -231,7 +233,7 @@ class Model(object, metaclass=ModelMeta):
         return result.get("insert_count", 0)
 
     @classproperty
-    def objects(cls: Type[M]) -> "QuerySet[M]":
+    def objects(cls: Type[M]) -> "QuerySet[Self]":
         """Return a QuerySet for the model."""
 
         return QuerySet(cls)
@@ -240,7 +242,7 @@ class Model(object, metaclass=ModelMeta):
 
         @classmethod
         @property
-        def objects(cls) -> "QuerySet[M]": ...
+        def objects(cls) -> "QuerySet[Self]": ...
 
     async def save(self) -> bool:
         """Save model instance to Milvus."""
@@ -281,6 +283,7 @@ class Model(object, metaclass=ModelMeta):
     async def update(self, **kwargs) -> bool:
         """Update model instance with new values."""
         client = await ensure_connection()
+
         primary_key = self._primary_key_field
         pk_value = getattr(self, primary_key, None)
 
