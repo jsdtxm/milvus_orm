@@ -6,7 +6,7 @@
 
 - 提供类似Django ORM的简洁API
 - 完全异步支持，使用AsyncMilvusClient
-- 支持多种数据类型：FLOAT_VECTOR、VARCHAR、JSON、INT64、FLOAT等
+- 支持多种数据类型：FloatVectorField、CharField、JsonField、BigIntField、FloatField等
 - 支持向量搜索和标量过滤
 - 支持动态字段
 
@@ -23,7 +23,7 @@ pip install pymilvus
 
 ```python
 import asyncio
-from milvus_orm import connect, disconnect, Model, INT64, VARCHAR, FLOAT_VECTOR, JSON
+from milvus_orm import connect, disconnect, Model, BigIntField, CharField, FloatVectorField, JsonField
 
 async def main():
     # 连接到Milvus服务器
@@ -44,12 +44,12 @@ class Product(Model):
     collection_name = "products"
     
     # 定义字段
-    id = INT64(primary_key=True)
-    name = VARCHAR(max_length=255)
-    description = VARCHAR(max_length=1000)
-    price = FLOAT()
-    vector = FLOAT_VECTOR(dim=768)  # 768维向量
-    metadata = JSON(nullable=True)  # 可选的JSON字段
+    id = BigIntField(primary_key=True)
+    name = CharField(max_length=255)
+    description = CharField(max_length=1000)
+    price = FloatField()
+    vector = FloatVectorField(dim=768)  # 768维向量
+    metadata = JsonField(nullable=True)  # 可选的JSON字段
 ```
 
 ### 3. 创建集合
@@ -134,12 +134,15 @@ print(f"删除了 {count} 个产品")
 
 目前支持的字段类型：
 
-- `INT64` - 64位整数
-- `VARCHAR` - 可变长度字符串
-- `FLOAT` - 浮点数
-- `JSON` - JSON类型，用于存储结构化数据
-- `FLOAT_VECTOR` - 密集浮点向量
-- `SPARSE_FLOAT_VECTOR` - 稀疏浮点向量
+- `IntegerField` - 32位整数
+- `BigIntField` - 64位整数
+- `BooleanField` - 布尔类型
+- `CharField` - 可变长度字符串
+- `UUIDField` - UUID类型（继承自CharField）
+- `FloatField` - 浮点数
+- `JsonField` - JSON类型，用于存储结构化数据
+- `FloatVectorField` - 密集浮点向量
+- `SparseFloatVectorField` - 稀疏浮点向量
 
 ## 查询操作符
 
