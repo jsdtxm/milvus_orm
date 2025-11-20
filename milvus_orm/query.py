@@ -110,23 +110,23 @@ class QuerySet(Generic[M]):
 
         # Check if collection exists
         if not await client.has_collection(
-            collection_name=self.model_class.collection_name
+            collection_name=self.model_class.Meta.collection_name
         ):
             return []
 
         # Load collection if not loaded
         if not await client.has_collection(
-            collection_name=self.model_class.collection_name, check_loaded=True
+            collection_name=self.model_class.Meta.collection_name, check_loaded=True
         ):
             await client.load_collection(
-                collection_name=self.model_class.collection_name
+                collection_name=self.model_class.Meta.collection_name
             )
 
         # Determine which method to use: search or query
         if self._search_params and self._vector_field:
             # Use vector search
             results = await client.search(
-                collection_name=self.model_class.collection_name,
+                collection_name=self.model_class.Meta.collection_name,
                 data=[self._search_params["vector"]],
                 anns_field=self._search_params["field_name"],
                 limit=self._limit,
@@ -155,7 +155,7 @@ class QuerySet(Generic[M]):
         else:
             # Use scalar query
             results = await client.query(
-                collection_name=self.model_class.collection_name,
+                collection_name=self.model_class.Meta.collection_name,
                 filter=self._filter or "",
                 limit=self._limit,
                 offset=self._offset,
@@ -172,21 +172,21 @@ class QuerySet(Generic[M]):
 
         # Check if collection exists
         if not await client.has_collection(
-            collection_name=self.model_class.collection_name
+            collection_name=self.model_class.Meta.collection_name
         ):
             return 0
 
         # Load collection if not loaded
         if not await client.has_collection(
-            collection_name=self.model_class.collection_name, check_loaded=True
+            collection_name=self.model_class.Meta.collection_name, check_loaded=True
         ):
             await client.load_collection(
-                collection_name=self.model_class.collection_name
+                collection_name=self.model_class.Meta.collection_name
             )
 
         # Use query with limit=0 to get count
         results = await client.query(
-            collection_name=self.model_class.collection_name,
+            collection_name=self.model_class.Meta.collection_name,
             filter=self._filter or "",
             limit=0,
             output_fields=[self.model_class._primary_key_field],
@@ -200,13 +200,14 @@ class QuerySet(Generic[M]):
 
         # Check if collection exists
         if not await client.has_collection(
-            collection_name=self.model_class.collection_name
+            collection_name=self.model_class.Meta.collection_name
         ):
             return 0
 
         # Delete using filter
         result = await client.delete(
-            collection_name=self.model_class.collection_name, filter=self._filter or ""
+            collection_name=self.model_class.Meta.collection_name,
+            filter=self._filter or "",
         )
 
         return result.get("delete_count", 0)
