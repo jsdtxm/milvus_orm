@@ -4,8 +4,12 @@ Models module for milvus_orm. Defines the Model base class and related functiona
 
 from typing import Any, Dict, List, Type, TypeVar
 
+from pymilvus import CollectionSchema, FieldSchema
+from pymilvus.milvus_client.index import IndexParams
+
 from .client import ensure_connection
-from .fields import BigIntField, Field
+from .exceptions import NotContainsVectorField
+from .fields import BigIntField, Field, VectorField
 from .query import QuerySet
 
 M = TypeVar("M", bound="Model")
@@ -23,12 +27,21 @@ class ModelMeta(type):
         fields = {}
         primary_key_field = None
 
+        contains_vector_field = False
+
         for key, value in attrs.items():
             if isinstance(value, Field):
                 value.name = key
                 fields[key] = value
                 if value.primary_key:
                     primary_key_field = key
+            if not contains_vector_field and isinstance(value, VectorField):
+                contains_vector_field = True
+
+        if not contains_vector_field:
+            raise NotContainsVectorField(
+                "Model must contain at least one vector field."
+            )
 
         # If no primary key is defined, add a default one
         if not primary_key_field:
@@ -50,13 +63,25 @@ class ModelMeta(type):
         return super().__new__(mcs, name, bases, attrs)
 
 
+class MetaInfo:
+    """
+    Metadata class for Model.
+    """
+
+    collection_name: str
+
+
 class Model(object, metaclass=ModelMeta):
-    """Base class for all milvus_orm models."""
+    """
+    Base class for all milvus_orm models.
+    Mapping to collection in Milvus.
+    """
 
     # Will be set by metaclass
     _fields: Dict[str, Field] = {}
     _primary_key_field: str = "id"
-    collection_name: str = ""
+
+    Meta: MetaInfo
 
     def __init__(self, **kwargs):
         """Initialize a model instance with field values."""
@@ -87,33 +112,50 @@ class Model(object, metaclass=ModelMeta):
     @classmethod
     def _get_schema(cls) -> Dict[str, Any]:
         """Generate Milvus schema from model fields."""
-        fields = []
-        for field_name, field in cls._fields.items():
-            field_dict = field.to_milvus_type()
-            fields.append(field_dict)
 
-        schema = {
-            "collection_name": cls.collection_name,
-            "fields": fields,
-            "enable_dynamic_field": True,
-        }
+        fields = []
+        for field in cls._fields.values():
+            field_schema = FieldSchema(**field.to_milvus_type())
+            fields.append(field_schema)
+
+        schema = CollectionSchema(
+            fields=fields,
+            auto_id=False,
+            enable_dynamic_field=True,
+        )
+
         return schema
+
+    @classmethod
+    def _get_index_params(cls) -> IndexParams:
+        """Generate index params for collection."""
+        index_params = IndexParams()
+        for field_name, field in cls._fields.items():
+            if isinstance(field, VectorField):
+                index_params.add_index(
+                    field_name=field_name,
+                    index_type=field.index_type,
+                    # metric_type="L2",
+                    # params={"nlist": 1024},
+                )
+        return index_params
 
     @classmethod
     async def create_collection(cls) -> bool:
         """Create collection in Milvus based on model schema."""
         client = await ensure_connection()
         schema = cls._get_schema()
+        index_params = cls._get_index_params()
 
         # Check if collection already exists
-        if await client.has_collection(collection_name=cls.collection_name):
+        if await client.has_collection(collection_name=cls.Meta.collection_name):
             return False
 
         # Create the collection
         await client.create_collection(
-            collection_name=cls.collection_name,
-            fields=schema["fields"],
-            enable_dynamic_field=schema["enable_dynamic_field"],
+            collection_name=cls.Meta.collection_name,
+            schema=schema,
+            index_params=index_params,
         )
         return True
 
@@ -123,11 +165,11 @@ class Model(object, metaclass=ModelMeta):
         client = await ensure_connection()
 
         # Check if collection exists
-        if not await client.has_collection(collection_name=cls.collection_name):
+        if not await client.has_collection(collection_name=cls.Meta.collection_name):
             return False
 
         # Drop the collection
-        await client.drop_collection(collection_name=cls.collection_name)
+        await client.drop_collection(collection_name=cls.Meta.collection_name)
         return True
 
     @classmethod
@@ -146,14 +188,16 @@ class Model(object, metaclass=ModelMeta):
         client = await ensure_connection()
 
         # Check if collection exists, create if not
-        if not await client.has_collection(collection_name=cls.collection_name):
+        if not await client.has_collection(collection_name=cls.Meta.collection_name):
             await cls.create_collection()
 
         # Convert instances to dictionaries
         data = [instance.to_dict() for instance in instances]
 
         # Insert data in bulk
-        result = await client.insert(collection_name=cls.collection_name, data=data)
+        result = await client.insert(
+            collection_name=cls.Meta.collection_name, data=data
+        )
 
         # Update primary keys if auto_id is enabled
         primary_key = cls._primary_key_field
@@ -179,12 +223,14 @@ class Model(object, metaclass=ModelMeta):
         """Save model instance to Milvus."""
         # Check if collection exists, create if not
         client = await ensure_connection()
-        if not await client.has_collection(collection_name=self.collection_name):
+        if not await client.has_collection(collection_name=self.Meta.collection_name):
             await self.create_collection()
 
         # Convert to dict and insert
         data = self.to_dict()
-        result = await client.insert(collection_name=self.collection_name, data=[data])
+        result = await client.insert(
+            collection_name=self.Meta.collection_name, data=[data]
+        )
 
         # Update primary key if auto_id is enabled
         primary_key = self._primary_key_field
@@ -204,7 +250,8 @@ class Model(object, metaclass=ModelMeta):
             raise ValueError("Cannot delete instance without primary key")
 
         result = await client.delete(
-            collection_name=self.collection_name, filter=f"{primary_key} == {pk_value}"
+            collection_name=self.Meta.collection_name,
+            filter=f"{primary_key} == {pk_value}",
         )
 
         return result.get("delete_count", 0) > 0

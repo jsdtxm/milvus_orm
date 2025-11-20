@@ -3,13 +3,15 @@ Fields module for milvus_orm. Defines the Field classes used in Model definition
 """
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Optional
+
+from pymilvus import DataType
 
 
 class Field(ABC):
     """Base class for all field types in milvus_orm."""
 
-    MILVUS_TYPE: str
+    MILVUS_TYPE: DataType
 
     def __init__(
         self,
@@ -40,13 +42,13 @@ class Field(ABC):
 class IntegerField(Field):
     """Int64 field type."""
 
-    MILVUS_TYPE = "Int32"
+    MILVUS_TYPE = DataType.INT32
 
     def to_milvus_type(self) -> dict:
         return {
             "name": self.name,
-            "data_type": self.MILVUS_TYPE,
-            "is_primary_key": self.primary_key,
+            "dtype": self.MILVUS_TYPE,
+            "is_primary": self.primary_key,
             "nullable": self.nullable,
             "description": self.description,
             **self.kwargs,
@@ -61,18 +63,18 @@ class IntegerField(Field):
 class BigIntField(IntegerField):
     """Int64 field type."""
 
-    MILVUS_TYPE = "Int64"
+    MILVUS_TYPE = DataType.INT64
 
 
 class BooleanField(Field):
     """Boolean field type."""
 
-    MILVUS_TYPE = "Bool"
+    MILVUS_TYPE = DataType.BOOL
 
     def to_milvus_type(self) -> dict:
         return {
             "name": self.name,
-            "data_type": self.MILVUS_TYPE,
+            "dtype": self.MILVUS_TYPE,
             "nullable": self.nullable,
             "description": self.description,
             **self.kwargs,
@@ -87,7 +89,7 @@ class BooleanField(Field):
 class CharField(Field):
     """Variable character string field type."""
 
-    MILVUS_TYPE = "VarChar"
+    MILVUS_TYPE = DataType.VARCHAR
 
     def __init__(
         self,
@@ -104,11 +106,11 @@ class CharField(Field):
     def to_milvus_type(self) -> dict:
         return {
             "name": self.name,
-            "data_type": self.MILVUS_TYPE,
+            "dtype": self.MILVUS_TYPE,
             "max_length": self.max_length,
             "enable_analyzer": self.enable_analyzer,
             "enable_match": self.enable_match,
-            "is_primary_key": self.primary_key,
+            "is_primary": self.primary_key,
             "nullable": self.nullable,
             "description": self.description,
             **self.kwargs,
@@ -125,12 +127,12 @@ class CharField(Field):
 class JsonField(Field):
     """JSON field type for storing structured data."""
 
-    MILVUS_TYPE = "JSON"
+    MILVUS_TYPE = DataType.JSON
 
     def to_milvus_type(self) -> dict:
         return {
             "name": self.name,
-            "data_type": self.MILVUS_TYPE,
+            "dtype": self.MILVUS_TYPE,
             "nullable": self.nullable,
             "description": self.description,
             **self.kwargs,
@@ -146,12 +148,12 @@ class JsonField(Field):
 class FloatField(Field):
     """Float field type."""
 
-    MILVUS_TYPE = "Float"
+    MILVUS_TYPE = DataType.FLOAT
 
     def to_milvus_type(self) -> dict:
         return {
             "name": self.name,
-            "data_type": self.MILVUS_TYPE,
+            "dtype": self.MILVUS_TYPE,
             "nullable": self.nullable,
             "description": self.description,
             **self.kwargs,
@@ -163,10 +165,16 @@ class FloatField(Field):
         return isinstance(value, (int, float))
 
 
-class FloatVectorField(Field):
-    """Dense float vector field type."""
+class VectorField(Field):
+    """Base class for vector field types."""
 
-    MILVUS_TYPE = "FloatVector"
+    def __init__(self, index_type: Optional[str] = "AUTOINDEX", **kwargs):
+        super().__init__(**kwargs)
+        self.index_type = index_type
+
+
+class DenseVectorField(VectorField):
+    """Base class for dense vector field types."""
 
     def __init__(self, dim: int, **kwargs):
         super().__init__(**kwargs)
@@ -175,7 +183,7 @@ class FloatVectorField(Field):
     def to_milvus_type(self) -> dict:
         return {
             "name": self.name,
-            "data_type": self.MILVUS_TYPE,
+            "dtype": self.MILVUS_TYPE,
             "dim": self.dim,
             "description": self.description,
             **self.kwargs,
@@ -191,15 +199,21 @@ class FloatVectorField(Field):
         return all(isinstance(v, (int, float)) for v in value)
 
 
+class FloatVectorField(DenseVectorField):
+    """Dense float vector field type."""
+
+    MILVUS_TYPE = DataType.FLOAT_VECTOR
+
+
 class SparseFloatVectorField(Field):
     """Sparse float vector field type."""
 
-    MILVUS_TYPE = "SparseFloatVector"
+    MILVUS_TYPE = DataType.SPARSE_FLOAT_VECTOR
 
     def to_milvus_type(self) -> dict:
         return {
             "name": self.name,
-            "data_type": self.MILVUS_TYPE,
+            "dtype": self.MILVUS_TYPE,
             "description": self.description,
             **self.kwargs,
         }
