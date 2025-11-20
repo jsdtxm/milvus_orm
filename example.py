@@ -35,7 +35,7 @@ async def main():
     # 1. 连接到Milvus
     print("\n1. 连接到Milvus...")
     try:
-        await connect(uri="http://localhost:19530", token="root:QQNN_Milvus")
+        await connect(uri="http://localhost:19530")
         print("✓ 成功连接到Milvus")
     except Exception as e:
         print(f"✗ 连接失败: {e}")
