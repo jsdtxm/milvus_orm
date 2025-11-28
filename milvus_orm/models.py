@@ -186,15 +186,17 @@ class Model(object, metaclass=ModelMeta):
         schema = cls._get_schema()
         index_params = cls._get_index_params()
 
+        collection_name = collection_name or cls.Meta.collection_name
+
         # Check if collection already exists
         if await client.has_collection(
-            collection_name=collection_name or cls.Meta.collection_name
+            collection_name=collection_name
         ):
             return False
 
         # Create the collection
         await client.create_collection(
-            collection_name=cls.Meta.collection_name,
+            collection_name=collection_name,
             schema=schema,
             index_params=index_params,
             consistency_level=cls.Meta.consistency_level,
