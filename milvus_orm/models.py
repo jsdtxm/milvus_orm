@@ -3,7 +3,7 @@ Models module for milvus_orm. Defines the Model base class and related functiona
 """
 
 import uuid
-from typing import TYPE_CHECKING, Any, Dict, List, Self, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Self, Type, TypeVar
 
 from pymilvus import CollectionSchema, FieldSchema
 from pymilvus.grpc_gen import common_pb2
@@ -92,10 +92,12 @@ class MetaInfo:
         collection_name: str,
         enable_dynamic_field: bool = False,
         consistency_level: str = ConsistencyLevel.Session,
+        dynamic: bool = False,
     ):
         self.collection_name = collection_name
         self.enable_dynamic_field = enable_dynamic_field
         self.consistency_level = consistency_level
+        self.dynamic = dynamic
 
 
 class Model(object, metaclass=ModelMeta):
@@ -174,14 +176,20 @@ class Model(object, metaclass=ModelMeta):
         return index_params
 
     @classmethod
-    async def create_collection(cls) -> bool:
+    async def create_collection(cls, collection_name: Optional[str] = None) -> bool:
         """Create collection in Milvus based on model schema."""
+
+        if cls.Meta.dynamic and not collection_name:
+            raise ValueError("Dynamic collection must specify collection_name")
+
         client = await ensure_connection()
         schema = cls._get_schema()
         index_params = cls._get_index_params()
 
         # Check if collection already exists
-        if await client.has_collection(collection_name=cls.Meta.collection_name):
+        if await client.has_collection(
+            collection_name=collection_name or cls.Meta.collection_name
+        ):
             return False
 
         # Create the collection

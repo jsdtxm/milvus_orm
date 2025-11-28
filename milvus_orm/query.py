@@ -28,6 +28,24 @@ class QuerySet(Generic[M]):
 
         self._consistency_level: Optional[str] = None
 
+        self._collection_name: Optional[str] = None
+
+    def get_collection_name(self) -> str:
+        """Get the collection name to query."""
+        if self.model_class.Meta.dynamic and not self._collection_name:
+            raise ValueError("Dynamic collection must specify collection_name")
+        return (
+            self._collection_name
+            if self._collection_name
+            else self.model_class.Meta.collection_name
+        )
+
+    def on(self, collection_name: str) -> "QuerySet[M]":
+        """Set the collection name to query."""
+        qs = self._clone()
+        qs._collection_name = collection_name
+        return qs
+
     def filter(self, expr: str) -> "QuerySet[M]":
         """Add filter expression to the query."""
         qs = self._clone()
@@ -109,24 +127,20 @@ class QuerySet(Generic[M]):
         client = await ensure_connection()
 
         # Check if collection exists
-        if not await client.has_collection(
-            collection_name=self.model_class.Meta.collection_name
-        ):
+        if not await client.has_collection(collection_name=self.get_collection_name()):
             return []
 
         # Load collection if not loaded
         if not await client.has_collection(
-            collection_name=self.model_class.Meta.collection_name, check_loaded=True
+            collection_name=self.get_collection_name(), check_loaded=True
         ):
-            await client.load_collection(
-                collection_name=self.model_class.Meta.collection_name
-            )
+            await client.load_collection(collection_name=self.get_collection_name())
 
         # Determine which method to use: search or query
         if self._search_params and self._vector_field:
             # Use vector search
             results = await client.search(
-                collection_name=self.model_class.Meta.collection_name,
+                collection_name=self.get_collection_name(),
                 data=[self._search_params["vector"]],
                 filter=self._filter,
                 anns_field=self._search_params["field_name"],
@@ -157,7 +171,7 @@ class QuerySet(Generic[M]):
         else:
             # Use scalar query
             results = await client.query(
-                collection_name=self.model_class.Meta.collection_name,
+                collection_name=self.get_collection_name(),
                 filter=self._filter or "",
                 limit=self._limit,
                 offset=self._offset,
@@ -175,22 +189,18 @@ class QuerySet(Generic[M]):
         client = await ensure_connection()
 
         # Check if collection exists
-        if not await client.has_collection(
-            collection_name=self.model_class.Meta.collection_name
-        ):
+        if not await client.has_collection(collection_name=self.get_collection_name()):
             return 0
 
         # Load collection if not loaded
         if not await client.has_collection(
-            collection_name=self.model_class.Meta.collection_name, check_loaded=True
+            collection_name=self.get_collection_name(), check_loaded=True
         ):
-            await client.load_collection(
-                collection_name=self.model_class.Meta.collection_name
-            )
+            await client.load_collection(collection_name=self.get_collection_name())
 
         # Use query with limit=0 to get count
         results = await client.query(
-            collection_name=self.model_class.Meta.collection_name,
+            collection_name=self.get_collection_name(),
             filter=self._filter or "",
             consistency_level=self._consistency_level
             or self.model_class.Meta.consistency_level,
@@ -205,14 +215,12 @@ class QuerySet(Generic[M]):
         client = await ensure_connection()
 
         # Check if collection exists
-        if not await client.has_collection(
-            collection_name=self.model_class.Meta.collection_name
-        ):
+        if not await client.has_collection(collection_name=self.get_collection_name()):
             return 0
 
         # Delete using filter
         result = await client.delete(
-            collection_name=self.model_class.Meta.collection_name,
+            collection_name=self.get_collection_name(),
             filter=self._filter or "",
         )
 
