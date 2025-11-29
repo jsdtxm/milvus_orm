@@ -52,6 +52,20 @@ class IntegerField(Field):
 
     MILVUS_TYPE = DataType.INT32
 
+    def __init__(
+        self,
+        primary_key: bool = False,
+        nullable: bool = False,
+        default: Any = None,
+        description: str = "",
+        db_index: bool = False,
+        index_type: Optional[str] = "AUTOINDEX",
+        **kwargs,
+    ):
+        super().__init__(primary_key, nullable, default, description, **kwargs)
+        self.db_index = db_index
+        self.index_type = index_type
+
     def to_milvus_type(self) -> dict:
         return {
             "name": self.name,

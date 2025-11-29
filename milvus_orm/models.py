@@ -197,6 +197,11 @@ class Model(object, metaclass=ModelMeta):
                     # metric_type="L2",
                     # params={"nlist": 1024},
                 )
+            elif isinstance(field, IntegerField) and field.db_index:
+                index_params.add_index(
+                    field_name=field_name,
+                    index_type=field.index_type,
+                )
         return index_params
 
     @classmethod
