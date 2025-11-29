@@ -314,12 +314,18 @@ class Model(object, metaclass=ModelMeta):
 
         return self._collection_name or self.Meta.collection_name
 
-    async def save(self) -> bool:
+    async def save(self, auto_create_collection: bool = False) -> bool:
         """Save model instance to Milvus."""
         # Check if collection exists, create if not
         client = await ensure_connection()
+
         if not await client.has_collection(collection_name=self.get_collection_name()):
-            await self.create_collection()
+            if auto_create_collection:
+                await self.create_collection()
+            else:
+                raise ValueError(
+                    f"Collection {self.get_collection_name()} does not exist"
+                )
 
         # Convert to dict and insert
         result = await client.insert(
