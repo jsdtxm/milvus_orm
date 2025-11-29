@@ -5,13 +5,20 @@ Models module for milvus_orm. Defines the Model base class and related functiona
 import uuid
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Self, Type, TypeVar
 
-from pymilvus import CollectionSchema, FieldSchema
+from pymilvus import CollectionSchema, FieldSchema, Function, FunctionType
 from pymilvus.grpc_gen import common_pb2
 from pymilvus.milvus_client.index import IndexParams
 
 from .client import ensure_connection
 from .exceptions import NotContainsVectorField
-from .fields import BigIntField, Field, UUIDField, VectorField
+from .fields import (
+    BigIntField,
+    Field,
+    IntegerField,
+    SparseFloatVectorField,
+    UUIDField,
+    VectorField,
+)
 from .query import QuerySet
 from .utils import classproperty
 
@@ -149,12 +156,23 @@ class Model(object, metaclass=ModelMeta):
         """Generate Milvus schema from model fields."""
 
         fields = []
+        functions = []
         for field in cls._fields.values():
             field_schema = FieldSchema(**field.to_milvus_type())
             fields.append(field_schema)
+            if isinstance(field, SparseFloatVectorField):
+                functions.append(
+                    Function(
+                        name=f"{field.name}_bm25_emb",
+                        input_field_names=field.input_fields,
+                        output_field_names=[field.name],
+                        function_type=FunctionType.BM25,
+                    )
+                )
 
         schema = CollectionSchema(
             fields=fields,
+            functions=functions,
             auto_id=False,
             enable_dynamic_field=cls.Meta.enable_dynamic_field,
         )
@@ -166,7 +184,13 @@ class Model(object, metaclass=ModelMeta):
         """Generate index params for collection."""
         index_params = IndexParams()
         for field_name, field in cls._fields.items():
-            if isinstance(field, VectorField):
+            if isinstance(field, SparseFloatVectorField):
+                index_params.add_index(
+                    field_name=field_name,
+                    index_type="SPARSE_INVERTED_INDEX",
+                    metric_type="BM25",
+                )
+            elif isinstance(field, VectorField):
                 index_params.add_index(
                     field_name=field_name,
                     index_type=field.index_type,

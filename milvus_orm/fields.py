@@ -3,7 +3,7 @@ Fields module for milvus_orm. Defines the Field classes used in Model definition
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 from pymilvus import DataType
 
@@ -253,6 +253,16 @@ class SparseFloatVectorField(Field):
     """Sparse float vector field type."""
 
     MILVUS_TYPE = DataType.SPARSE_FLOAT_VECTOR
+
+    def __init__(
+        self,
+        input_fields: List[str] | str,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.input_fields = (
+            input_fields if isinstance(input_fields, list) else [input_fields]
+        )
 
     def to_milvus_type(self) -> dict:
         return {
