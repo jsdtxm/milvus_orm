@@ -189,9 +189,7 @@ class Model(object, metaclass=ModelMeta):
         collection_name = collection_name or cls.Meta.collection_name
 
         # Check if collection already exists
-        if await client.has_collection(
-            collection_name=collection_name
-        ):
+        if await client.has_collection(collection_name=collection_name):
             return False
 
         # Create the collection
@@ -204,16 +202,21 @@ class Model(object, metaclass=ModelMeta):
         return True
 
     @classmethod
-    async def drop_collection(cls) -> bool:
+    async def drop_collection(cls, collection_name: Optional[str] = None) -> bool:
         """Drop collection from Milvus."""
+        if cls.Meta.dynamic and not collection_name:
+            raise ValueError("Dynamic collection must specify collection_name")
+
         client = await ensure_connection()
 
+        collection_name = collection_name or cls.Meta.collection_name
+
         # Check if collection exists
-        if not await client.has_collection(collection_name=cls.Meta.collection_name):
+        if not await client.has_collection(collection_name=collection_name):
             return False
 
         # Drop the collection
-        await client.drop_collection(collection_name=cls.Meta.collection_name)
+        await client.drop_collection(collection_name=collection_name)
         return True
 
     @classmethod
