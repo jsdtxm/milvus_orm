@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, Generic, List, Optional, Type, Type
 from milvus_orm.exceptions import DoesNotExist, MultipleObjectsReturned
 
 from .client import ensure_connection
+from .fields import SparseFloatVectorField
 
 if TYPE_CHECKING:
     from .models import Model
@@ -26,8 +27,9 @@ class QuerySet(Generic[M]):
         self._search_params: Optional[Dict[str, Any]] = None
         self._vector_field: Optional[str] = None
 
-        self._consistency_level: Optional[str] = None
+        self._model_fields: Optional[List[str]] = None
 
+        self._consistency_level: Optional[str] = None
         self._collection_name: Optional[str] = None
 
     def get_collection_name(self) -> str:
@@ -99,7 +101,19 @@ class QuerySet(Generic[M]):
         qs._output_fields = self._output_fields
         qs._search_params = self._search_params.copy() if self._search_params else None
         qs._vector_field = self._vector_field
+        qs._consistency_level = self._consistency_level
+        qs._collection_name = self._collection_name
         return qs
+
+    def _get_model_fields(self):
+        if self._model_fields:
+            return self._model_fields
+        self._model_fields = [
+            k
+            for k, v in self.model_class._fields.items()
+            if not isinstance(v, SparseFloatVectorField)
+        ]
+        return self._model_fields
 
     async def get(self, **kwargs) -> M:
         """Get a single instance matching the filter."""
@@ -153,8 +167,7 @@ class QuerySet(Generic[M]):
                 filter=self._filter,
                 anns_field=self._search_params["field_name"],
                 limit=self._limit,
-                output_fields=self._output_fields
-                or list(self.model_class._fields.keys()),
+                output_fields=self._output_fields or self._get_model_fields(),
                 consistency_level=self._consistency_level
                 or self.model_class.Meta.consistency_level,
                 **{
@@ -183,8 +196,7 @@ class QuerySet(Generic[M]):
                 filter=self._filter or "",
                 limit=self._limit,
                 offset=self._offset,
-                output_fields=self._output_fields
-                or list(self.model_class._fields.keys()),
+                output_fields=self._output_fields or self._get_model_fields(),
                 consistency_level=self._consistency_level
                 or self.model_class.Meta.consistency_level,
             )
