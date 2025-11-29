@@ -108,12 +108,14 @@ class CharField(Field):
         self,
         max_length: int = 65535,
         enable_analyzer: bool = False,
+        analyzer_params: Optional[dict] = None,
         enable_match: bool = False,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.max_length = max_length
         self.enable_analyzer = enable_analyzer
+        self.analyzer_params = analyzer_params
         self.enable_match = enable_match
 
     def to_milvus_type(self) -> dict:
@@ -122,6 +124,7 @@ class CharField(Field):
             "dtype": self.MILVUS_TYPE,
             "max_length": self.max_length,
             "enable_analyzer": self.enable_analyzer,
+            "analyzer_params": self.analyzer_params,
             "enable_match": self.enable_match,
             "is_primary": self.primary_key,
             "nullable": self.nullable,
