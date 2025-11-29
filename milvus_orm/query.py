@@ -40,6 +40,14 @@ class QuerySet(Generic[M]):
             else self.model_class.Meta.collection_name
         )
 
+    async def create(self, **kwargs) -> M:
+        """Create a new instance of the model."""
+        instance = self.model_class(
+            _collection_name=self.get_collection_name(), **kwargs
+        )
+        await instance.save()
+        return instance
+
     def on(self, collection_name: str) -> "QuerySet[M]":
         """Set the collection name to query."""
         qs = self._clone()

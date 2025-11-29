@@ -121,7 +121,7 @@ class Model(object, metaclass=ModelMeta):
 
     Meta: MetaInfo
 
-    def __init__(self, **kwargs):
+    def __init__(self, _collection_name=None, **kwargs):
         """Initialize a model instance with field values."""
         # Validate and set field values
         for field_name, field in self._fields.items():
@@ -134,6 +134,8 @@ class Model(object, metaclass=ModelMeta):
 
         # Store any extra fields in dynamic field if enabled
         self._extra_fields = {k: v for k, v in kwargs.items() if k not in self._fields}
+
+        self._collection_name = _collection_name
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert model instance to dictionary."""
@@ -294,7 +296,7 @@ class Model(object, metaclass=ModelMeta):
         return result.get("insert_count", 0)
 
     @classproperty
-    def objects(cls: Type[M]) -> "QuerySet[Self]":
+    def objects(cls: Type[M]) -> "QuerySet[M]":
         """Return a QuerySet for the model."""
 
         return QuerySet(cls)
@@ -303,18 +305,25 @@ class Model(object, metaclass=ModelMeta):
 
         @classmethod
         @property
-        def objects(cls) -> "QuerySet[Self]": ...
+        def objects(cls: Type[M]) -> "QuerySet[M]": ...
+
+    def get_collection_name(self) -> str:
+        """Get the collection name to query."""
+        if self.Meta.dynamic and not self._collection_name:
+            raise ValueError("Dynamic collection must specify collection_name")
+
+        return self._collection_name or self.Meta.collection_name
 
     async def save(self) -> bool:
         """Save model instance to Milvus."""
         # Check if collection exists, create if not
         client = await ensure_connection()
-        if not await client.has_collection(collection_name=self.Meta.collection_name):
+        if not await client.has_collection(collection_name=self.get_collection_name()):
             await self.create_collection()
 
         # Convert to dict and insert
         result = await client.insert(
-            collection_name=self.Meta.collection_name, data=[self.to_dict()]
+            collection_name=self.get_collection_name(), data=[self.to_dict()]
         )
 
         # Update primary key if auto_id is enabled
@@ -335,7 +344,7 @@ class Model(object, metaclass=ModelMeta):
             raise ValueError("Cannot delete instance without primary key")
 
         result = await client.delete(
-            collection_name=self.Meta.collection_name,
+            collection_name=self.get_collection_name(),
             filter=f"{primary_key} == {pk_value}",
         )
 
@@ -365,7 +374,7 @@ class Model(object, metaclass=ModelMeta):
                 self._extra_fields[field_name] = value
 
         return await client.upsert(
-            collection_name=self.Meta.collection_name,
+            collection_name=self.get_collection_name(),
             data=[self.to_dict()],
             consistency_level=self.Meta.consistency_level,
             partial_update=True,
