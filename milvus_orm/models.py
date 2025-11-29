@@ -125,6 +125,8 @@ class Model(object, metaclass=ModelMeta):
         """Initialize a model instance with field values."""
         # Validate and set field values
         for field_name, field in self._fields.items():
+            if isinstance(field, SparseFloatVectorField):
+                continue
             value = kwargs.get(field_name, field.default)
             if not field.validate(value):
                 raise ValueError(f"Invalid value for field '{field_name}': {value}")
@@ -137,6 +139,8 @@ class Model(object, metaclass=ModelMeta):
         """Convert model instance to dictionary."""
         data = {}
         for field_name, field in self._fields.items():
+            if isinstance(field, SparseFloatVectorField):
+                continue
             value = getattr(self, field_name, None)
             if value is not None:
                 if isinstance(field, UUIDField):
