@@ -1,2 +1,4 @@
 *.pyc
 /.mypy_cache
+/dist
+/milvus_orm.egg-info

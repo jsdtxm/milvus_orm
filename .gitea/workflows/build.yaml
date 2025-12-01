@@ -1,0 +1,53 @@
+name: Build and Upload Python Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 检出代码
+      - name: Checkout code
+        uses: https://${{ secrets.PAT }}@gitea.xiamin.tech/actions/checkout@v3
+
+      - name: Configure pip.conf
+        run: |
+          mkdir -p ~/.config/pip
+          cat <<EOF > ~/.config/pip/pip.conf
+          [global]
+          index-url = https://nexus.xiamin.tech/repository/pypi_proxy/simple
+          EOF
+
+      # 设置 Python 环境
+      - name: Set up Python
+        uses: https://${{ secrets.PAT }}@gitea.xiamin.tech/actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      # 安装依赖
+      - name: Install dependencies
+        run: |
+          pip install setuptools wheel twine build
+      
+      # 修改版本号
+      - name: Install dependencies
+        run: |
+          ref_name="${{ gitea.ref_name }}"
+          sed -i 's/\(version\s*=\s*\)"[^"]*"/\1"'"${ref_name#v}"'"/' setup.py
+
+      # 构建 Python 包
+      - name: Build package
+        run: |
+          python -m build
+
+      # 上传 .whl
+      - name: Publish to PyPI
+        run: |
+          python -m twine upload --repository-url https://nexus.xiamin.tech/repository/pypi_hosted/ dist/*
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
