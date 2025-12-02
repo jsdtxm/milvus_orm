@@ -32,7 +32,7 @@ async def connect(
         return _client
 
     # Create new client
-    _client_config = {"uri": uri, "token": token, **kwargs}
+    _client_config = {"uri": uri, "token": token, "timeout": 10, **kwargs}
 
     _client = AsyncMilvusClient(**_client_config)
     return _client
