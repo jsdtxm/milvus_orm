@@ -87,12 +87,22 @@ class QuerySet(Generic[M]):
         qs._defer_fields = list(fields)
         return qs
 
-    def search(self, vector: List[float], field_name: str, **kwargs) -> "QuerySet[M]":
+    def search(
+        self,
+        field_name: str,
+        vector: Optional[List[float]] = None,
+        data: Optional[List[str]] = None,
+        **kwargs,
+    ) -> "QuerySet[M]":
         """Configure vector search parameters."""
+        if not vector and not data:
+            raise Exception("Should provide vector or data")
+
         qs = self._clone()
         qs._vector_field = field_name
         qs._search_params = {
             "vector": vector,
+            "data": data,
             "field_name": field_name,
             "filter": qs._filter,
             **kwargs,
@@ -172,7 +182,9 @@ class QuerySet(Generic[M]):
             # Use vector search
             results = await client.search(
                 collection_name=self.get_collection_name(),
-                data=[self._search_params["vector"]],
+                data=[v]
+                if (v := self._search_params["vector"])
+                else self._search_params["data"],
                 filter=self._filter,
                 anns_field=self._search_params["field_name"],
                 limit=self._limit,
@@ -182,7 +194,8 @@ class QuerySet(Generic[M]):
                 **{
                     k: v
                     for k, v in self._search_params.items()
-                    if k not in ["vector", "field_name", "limit", "offset", "filter"]
+                    if k
+                    not in ["vector", "data", "field_name", "limit", "offset", "filter"]
                 },
             )
 
@@ -191,7 +204,11 @@ class QuerySet(Generic[M]):
             for result in results[0]:  # results is a list of result lists
                 entity = result.entity
                 data = entity.to_dict()
-                instances.append(self.model_class(_from_result=True, _distance=result.distance, **data["entity"]))
+                instances.append(
+                    self.model_class(
+                        _from_result=True, _distance=result.distance, **data["entity"]
+                    )
+                )
 
             # Apply offset
             if self._offset > 0:
