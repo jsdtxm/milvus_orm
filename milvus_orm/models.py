@@ -121,7 +121,13 @@ class Model(object, metaclass=ModelMeta):
 
     Meta: MetaInfo
 
-    def __init__(self, _collection_name=None, _from_result: bool = False, **kwargs):
+    def __init__(
+        self,
+        _collection_name=None,
+        _from_result: bool = False,
+        _distance=None,
+        **kwargs,
+    ):
         """Initialize a model instance with field values."""
         # Validate and set field values
         for field_name, field in self._fields.items():
@@ -136,6 +142,7 @@ class Model(object, metaclass=ModelMeta):
         self._extra_fields = {k: v for k, v in kwargs.items() if k not in self._fields}
 
         self._collection_name = _collection_name
+        self._distance = _distance
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert model instance to dictionary."""

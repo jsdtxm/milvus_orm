@@ -191,7 +191,7 @@ class QuerySet(Generic[M]):
             for result in results[0]:  # results is a list of result lists
                 entity = result.entity
                 data = entity.to_dict()
-                instances.append(self.model_class(_from_result=True, **data["entity"]))
+                instances.append(self.model_class(_from_result=True, _distance=result.distance, **data["entity"]))
 
             # Apply offset
             if self._offset > 0:
