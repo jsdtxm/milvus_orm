@@ -28,6 +28,7 @@ class QuerySet(Generic[M]):
         self._vector_field: Optional[str] = None
 
         self._model_fields: Optional[List[str]] = None
+        self._defer_fields: List[str] = []
 
         self._consistency_level: Optional[str] = None
         self._collection_name: Optional[str] = None
@@ -80,6 +81,12 @@ class QuerySet(Generic[M]):
         qs._output_fields = list(fields)
         return qs
 
+    def defer(self, *fields: str) -> "QuerySet[M]":
+        """Specify fields to defer loading."""
+        qs = self._clone()
+        qs._defer_fields = list(fields)
+        return qs
+
     def search(self, vector: List[float], field_name: str, **kwargs) -> "QuerySet[M]":
         """Configure vector search parameters."""
         qs = self._clone()
@@ -99,6 +106,7 @@ class QuerySet(Generic[M]):
         qs._limit = self._limit
         qs._offset = self._offset
         qs._output_fields = self._output_fields
+        qs._defer_fields = self._defer_fields
         qs._search_params = self._search_params.copy() if self._search_params else None
         qs._vector_field = self._vector_field
         qs._consistency_level = self._consistency_level
@@ -112,6 +120,7 @@ class QuerySet(Generic[M]):
             k
             for k, v in self.model_class._fields.items()
             if not isinstance(v, SparseFloatVectorField)
+            and k not in set(self._defer_fields)
         ]
         return self._model_fields
 
@@ -182,7 +191,7 @@ class QuerySet(Generic[M]):
             for result in results[0]:  # results is a list of result lists
                 entity = result.entity
                 data = entity.to_dict()
-                instances.append(self.model_class(**data["entity"]))
+                instances.append(self.model_class(_from_result=True, **data["entity"]))
 
             # Apply offset
             if self._offset > 0:
@@ -202,7 +211,7 @@ class QuerySet(Generic[M]):
             )
 
             # Convert query results to model instances
-            return [self.model_class(**item) for item in results]
+            return [self.model_class(_from_result=True, **item) for item in results]
 
     async def count(self) -> int:
         """Count instances matching the query."""

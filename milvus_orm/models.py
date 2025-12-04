@@ -3,7 +3,7 @@ Models module for milvus_orm. Defines the Model base class and related functiona
 """
 
 import uuid
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Self, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, TypeVar
 
 from pymilvus import CollectionSchema, FieldSchema, Function, FunctionType
 from pymilvus.grpc_gen import common_pb2
@@ -121,14 +121,14 @@ class Model(object, metaclass=ModelMeta):
 
     Meta: MetaInfo
 
-    def __init__(self, _collection_name=None, **kwargs):
+    def __init__(self, _collection_name=None, _from_result: bool = False, **kwargs):
         """Initialize a model instance with field values."""
         # Validate and set field values
         for field_name, field in self._fields.items():
             if isinstance(field, SparseFloatVectorField):
                 continue
             value = kwargs.get(field_name, field.default)
-            if not field.validate(value):
+            if not field.validate(value) and not _from_result:
                 raise ValueError(f"Invalid value for field '{field_name}': {value}")
             setattr(self, field_name, value)
 
