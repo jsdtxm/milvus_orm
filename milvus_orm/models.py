@@ -13,6 +13,7 @@ from .client import ensure_connection
 from .exceptions import NotContainsVectorField
 from .fields import (
     BigIntField,
+    CharField,
     Field,
     IntegerField,
     SparseFloatVectorField,
@@ -135,7 +136,16 @@ class Model(object, metaclass=ModelMeta):
                 continue
             value = kwargs.get(field_name, field.default)
             if not field.validate(value) and not _from_result:
-                raise ValueError(f"Invalid value for field '{field_name}': {value}")
+                if (
+                    isinstance(field, CharField)
+                    and isinstance(value, str)
+                    and len(value) > field.max_length
+                ):
+                    raise ValueError(
+                        f"Value for field '{field_name}' exceeds max_length ({field.max_length})"
+                    )
+                else:
+                    raise ValueError(f"Invalid value for field '{field_name}': {value}")
             setattr(self, field_name, value)
 
         # Store any extra fields in dynamic field if enabled
