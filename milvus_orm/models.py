@@ -118,7 +118,7 @@ class Model(object, metaclass=ModelMeta):
     _fields: Dict[str, Field] = {}
     _primary_key_field: str = "id"
 
-    id: BigIntField
+    id: UUIDField
 
     Meta: MetaInfo
 
